@@ -206,6 +206,43 @@
         transform 0.2s ease,
         box-shadow 0.2s ease,
         background 0.15s ease;
+
+      /* تأثير الموجات */
+      position: relative;
+      isolation: isolate;
+    }
+
+    .center-whatsapp-button::before,
+    .center-whatsapp-button::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid rgba(37,230,129,0.32);
+      pointer-events: none;
+      z-index: -1;
+      animation: whatsappPulse 2.4s ease-out infinite;
+    }
+
+    .center-whatsapp-button::after {
+      animation-delay: 1.2s;
+    }
+
+    @keyframes whatsappPulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.65;
+      }
+
+      70% {
+        transform: scale(1.65);
+        opacity: 0.16;
+      }
+
+      100% {
+        transform: scale(1.9);
+        opacity: 0;
+      }
     }
 
     .center-whatsapp-button:hover {
@@ -806,8 +843,25 @@
       sendToServer('Contact', eventIdContact, { source: 'WhatsApp_Button' });
     }
 
-    whatsappButton.addEventListener("click", trackWhatsAppClick);
-    centerWhatsappButton.addEventListener("click", trackWhatsAppClick);
+    /* منع الضغط المتكرر السريع على أزرار واتساب فقط */
+    let whatsappClickLocked = false;
+
+    function handleWhatsAppClick(e) {
+      if (whatsappClickLocked) {
+        e.preventDefault();
+        return;
+      }
+
+      whatsappClickLocked = true;
+      trackWhatsAppClick();
+
+      setTimeout(() => {
+        whatsappClickLocked = false;
+      }, 1500);
+    }
+
+    whatsappButton.addEventListener("click", handleWhatsAppClick);
+    centerWhatsappButton.addEventListener("click", handleWhatsAppClick);
 
     orderForm.addEventListener("submit", async function(e) {
       e.preventDefault();
@@ -834,6 +888,7 @@
           orderForm.reset();
 
           const eventId = generateEventId();
+          const contactEventId = generateEventId();
 
           const submitEventData = {
             contents: [{
@@ -852,6 +907,16 @@
             'SubmitForm',
             eventId,
             Object.assign({ type: 'Order_Submitted' }, submitEventData),
+            { phone: customerPhone }
+          );
+
+          /* تسجيل نفس حدث Contact الموجود أصلًا عند نجاح الطلب */
+          ttq.track('Contact', { event_id: contactEventId });
+
+          sendToServer(
+            'Contact',
+            contactEventId,
+            { source: 'Order_Submitted' },
             { phone: customerPhone }
           );
 
